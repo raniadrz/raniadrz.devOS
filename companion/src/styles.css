@@ -562,3 +562,6 @@ input[type="password"] {
     background: var(--input);
     outline: none;
 }
+
+.vol { min-width: 34px; text-align: center; font-weight: 800; }
+.st-card { display: grid; gap: 8px; }

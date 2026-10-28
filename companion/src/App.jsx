@@ -25,6 +25,7 @@ const SLEEP = [0, 15, 30, 60, 90, 120];
 
 const QUICK_AI = [
     'Τρέξε τη σκηνή «Βραδινή ταινία»',
+    'Άνοιξε το Netflix και χαμήλωσε την ένταση',
     'Είμαι στη σεζόν 2 επεισόδιο 5 του Dark',
     'Πρότεινέ μου μια σειρά σαν τα αγαπημένα μου',
     'Βάλε χρονοδιακόπτη ύπνου 30 λεπτά',
@@ -91,6 +92,21 @@ function useLive(authed) {
     return { ...snap, online, poll, setPoll };
 }
 
+/* ---------------- SmartThings κατάσταση ---------------- */
+function useSmartThings(authed) {
+    const [st, setSt] = useState({ configured: false, loaded: false });
+    const reload = useCallback(async () => {
+        try { setSt({ ...(await api('/api/st/status')), loaded: true }); } catch { /* ignore */ }
+    }, []);
+    useEffect(() => {
+        if (!authed) return undefined;
+        reload();
+        const t = setInterval(reload, 30000);
+        return () => clearInterval(t);
+    }, [authed, reload]);
+    return [st, reload];
+}
+
 /* ---------------- App ---------------- */
 export default function App() {
     const [authed, setAuthed] = useState(null);
@@ -103,6 +119,7 @@ export default function App() {
     }, []);
 
     const tv = useLive(authed);
+    const [st, reloadSt] = useSmartThings(authed);
     const [tab, setTab] = useState(() => { try { return localStorage.getItem('companion.tab') || 'home'; } catch { return 'home'; } });
     const [toast, setToast] = useState(null);
     const theme = tv.state?.theme || 'neon-dark';
@@ -128,10 +145,31 @@ export default function App() {
         }
     }, [notify]);
 
+    const stCmd = useCallback(async (type, value, okText) => {
+        try {
+            const r = await api('/api/st/command', { type, value });
+            if (r.ok) { if (okText) notify(okText); } else notify(r.info || 'Η εντολή απέτυχε', false);
+            setTimeout(reloadSt, 1500);
+            return r;
+        } catch (e) {
+            notify(e.message, false);
+            return { ok: false };
+        }
+    }, [notify, reloadSt]);
+
+    // Επιστροφή από τη σύνδεση Samsung (OAuth)
+    useEffect(() => {
+        const q = new URLSearchParams(location.search);
+        if (!q.get('st')) return;
+        if (q.get('st') === 'ok') { notify('SmartThings: μόνιμη σύνδεση ✓'); reloadSt(); }
+        else notify('SmartThings: ' + (q.get('msg') || 'η σύνδεση απέτυχε'), false);
+        history.replaceState(null, '', location.pathname);
+    }, [notify, reloadSt]);
+
     if (authed === null) return <div className="shell"><p className="muted center-text">Φόρτωση…</p></div>;
     if (!authed) return <Login onDone={() => setAuthed(true)} />;
 
-    const ctx = { tv, send, notify, logout };
+    const ctx = { tv, send, notify, logout, st, stCmd, reloadSt };
 
     return (
         <div className="shell">
@@ -142,7 +180,7 @@ export default function App() {
                     <span className="brand-text">raniadrz<b>.dev</b></span>
                     <span className="brand-tag">OS · COMPANION</span>
                 </div>
-                <Status tv={tv} />
+                <Status tv={tv} st={st} />
             </header>
 
             <nav className="tabs">
@@ -161,7 +199,7 @@ export default function App() {
                         <p>Στο Vercel: <b>Storage → Create → Upstash Redis</b> και σύνδεσέ τη με αυτό το project. Χωρίς αυτήν η TV και το web δεν «βλέπονται» σταθερά.</p>
                     </section>
                 )}
-                {!tv.tvConnected && <ConnectHelp online={tv.online} />}
+                {!tv.tvConnected && !(st.configured && !st.error) && <ConnectHelp online={tv.online} />}
                 {tab === 'home' && <HomeTab {...ctx} />}
                 {tab === 'ai' && <AiTab {...ctx} />}
                 {tab === 'series' && <SeriesTab {...ctx} />}
@@ -214,13 +252,14 @@ function Login({ onDone }) {
     );
 }
 
-function Status({ tv }) {
+function Status({ tv, st }) {
     const p = tv.state?.profile;
     return (
         <div className="status">
             {tv.state?.weather && <span className="pill on weather">{tv.state.weather}</span>}
             <span className={`pill ${tv.online ? 'on' : ''}`}><i /> SERVER</span>
-            <span className={`pill ${tv.tvConnected ? 'on' : ''}`}><i /> TV</span>
+            <span className={`pill ${tv.tvConnected ? 'on' : ''}`} title="Εφαρμογή raniadrz.dev OS"><i /> TV</span>
+            <span className={`pill ${st?.configured && !st?.error ? 'on' : ''}`} title="SmartThings"><i /> ST</span>
             <span className={`pill ${tv.ai ? 'on' : ''}`}><i /> AI</span>
             {p && <span className={`avatar av-${p.color}`} title={p.name}>{p.name.charAt(0).toUpperCase()}</span>}
         </div>
@@ -243,7 +282,7 @@ function ConnectHelp({ online }) {
 }
 
 /* ---------------- Τηλεχειριστήριο ---------------- */
-function HomeTab({ tv, send }) {
+function HomeTab({ tv, send, st, stCmd }) {
     const [msg, setMsg] = useState('');
     const [query, setQuery] = useState('');
     const [platform, setPlatform] = useState('YouTube');
@@ -288,8 +327,33 @@ function HomeTab({ tv, send }) {
                     </div>
                     <div className="row center">
                         <button className="btn" onClick={() => key('back')}>↩ Back</button>
-                        <button className="btn" onClick={() => send({ action: 'home' }, 'Αρχική οθόνη')}>⌂ Αρχική</button>
+                        <button className="btn" onClick={() => send({ action: 'home' }, 'Αρχική raniadrz.dev OS')}>⌂ Αρχική</button>
+                        {st.configured && <button className="btn" onClick={() => stCmd('key', 'home')}>Samsung Home</button>}
                     </div>
+
+                    {st.configured ? (
+                        <>
+                            <div className="row center">
+                                <button className="btn" onClick={() => stCmd('power', st.power === 'on' ? 'off' : 'on', st.power === 'on' ? 'Σβήσιμο TV' : 'Άναμμα TV')}>
+                                    ⏻ {st.power === 'on' ? 'Σβήσιμο' : 'Άναμμα'}
+                                </button>
+                                <button className="btn" onClick={() => stCmd('volume', 'down')} aria-label="Χαμήλωμα έντασης">🔉</button>
+                                <span className="vol">{st.volume ?? '–'}</span>
+                                <button className="btn" onClick={() => stCmd('volume', 'up')} aria-label="Δυνάμωμα έντασης">🔊</button>
+                                <button className="btn" onClick={() => stCmd('volume', st.mute === 'muted' ? 'unmute' : 'mute')} aria-label="Σίγαση">{st.mute === 'muted' ? '🔈' : '🔇'}</button>
+                            </div>
+                            <div className="row center">
+                                <button className="btn" onClick={() => stCmd('media', 'rewind')} aria-label="Πίσω">⏪</button>
+                                <button className="btn" onClick={() => stCmd('media', 'play')} aria-label="Αναπαραγωγή">▶</button>
+                                <button className="btn" onClick={() => stCmd('media', 'pause')} aria-label="Παύση">⏸</button>
+                                <button className="btn" onClick={() => stCmd('media', 'forward')} aria-label="Μπροστά">⏩</button>
+                            </div>
+                            <button className="btn primary wide" onClick={() => send({ action: 'openLauncher' }, 'Άνοιγμα raniadrz.dev OS')}>▶ Άνοιγμα raniadrz.dev OS</button>
+                            <p className="muted small">SmartThings {st.error ? `⚠ ${st.error}` : `✓ ${st.name || 'TV'}`} · το τηλεχειριστήριο δουλεύει και μέσα σε Netflix, YouTube κ.λπ.</p>
+                        </>
+                    ) : (
+                        <p className="muted small">💡 Σύνδεσε το <b>SmartThings</b> για να δουλεύει το τηλεχειριστήριο και μέσα σε Netflix/YouTube, να ανοίγεις το raniadrz.dev OS, ένταση και άναμμα/σβήσιμο.</p>
+                    )}
 
                     <h3>Χρονοδιακόπτης ύπνου {s?.sleepMinutes ? <span className="tag">σε {s.sleepMinutes}′</span> : null}</h3>
                     <div className="row">
@@ -351,7 +415,7 @@ function screenName(id) {
 const TOOL_LABEL = {
     set_theme: 'Θέμα', open_app: 'Άνοιγμα', press_keys: 'Πλήκτρα', show_message: 'Μήνυμα', add_favorite_series: '+ Αγαπημένα',
     remove_favorite_series: '− Αγαπημένα', open_series_recommendations: 'Σειρές AI', switch_profile: 'Προφίλ', set_setting: 'Ρύθμιση',
-    go_home: 'Αρχική', run_scene: 'Σκηνή', set_progress: 'Πρόοδος', search_on_tv: 'Αναζήτηση', set_sleep_timer: 'Ύπνος',
+    go_home: 'Αρχική', run_scene: 'Σκηνή', tv_power: 'Ρεύμα', tv_volume: 'Ένταση', tv_media: 'Αναπαραγωγή', open_raniadrz_os: 'raniadrz.dev OS', set_progress: 'Πρόοδος', search_on_tv: 'Αναζήτηση', set_sleep_timer: 'Ύπνος',
     add_poll_option: '+ Ψηφοφορία', show_poll: 'Ψηφοφορία'
 };
 
@@ -646,7 +710,7 @@ function PollTab({ tv, send, notify }) {
 }
 
 /* ---------------- Ρυθμίσεις ---------------- */
-function SettingsTab({ tv, send, logout, notify }) {
+function SettingsTab({ tv, send, logout, notify, st, reloadSt }) {
     const s = tv.state;
     const [city, setCity] = useState('');
     useEffect(() => { if (s?.city && !city) setCity(s.city); }, [s?.city]);   // eslint-disable-line react-hooks/exhaustive-deps
@@ -705,6 +769,9 @@ function SettingsTab({ tv, send, logout, notify }) {
                 </div>
                 <p className="muted small">Για ασφάλεια, προφίλ, PIN και ημερήσια όρια χρόνου ρυθμίζονται μόνο από την TV: ⚙ → Διαχείριση προφίλ.</p>
 
+                <h2 className="mt">SmartThings</h2>
+                <SmartThingsCard st={st} reloadSt={reloadSt} notify={notify} />
+
                 <h2 className="mt">Κωδικός σύνδεσης</h2>
                 <ChangePin notify={notify} />
 
@@ -756,5 +823,36 @@ function ChangePin({ notify }) {
                 value={again} onChange={e => setAgain(digits(e.target.value))} />
             <button className="btn primary" disabled={busy || current.length < 4 || next.length < 4}>{busy ? 'Αλλαγή…' : 'Αλλαγή κωδικού'}</button>
         </form>
+    );
+}
+
+function SmartThingsCard({ st, reloadSt, notify }) {
+    const [busy, setBusy] = useState(false);
+    const connect = async () => {
+        setBusy(true);
+        try {
+            const r = await api('/api/st/oauth/start', {});
+            location.href = r.url;
+        } catch (e) {
+            notify(e.message, false);
+            setBusy(false);
+        }
+    };
+    return (
+        <div className="st-card">
+            <p className="muted small">Τηλεχειριστήριο παντού (και μέσα σε Netflix/YouTube), άνοιγμα εφαρμογών, ένταση, άναμμα και σβήσιμο, από οπουδήποτε.</p>
+            <dl className="facts">
+                <dt>Κατάσταση</dt>
+                <dd>{!st.configured ? 'Δεν έχει συνδεθεί' : st.error ? `⚠ ${st.error}` : `✓ ${st.name || 'Samsung TV'}`}</dd>
+                <dt>Σύνδεση</dt>
+                <dd>{st.oauth ? 'Μόνιμη · ανανεώνεται μόνη της' : st.configured ? 'Προσωρινό κλειδί (λήγει σε 24 ώρες)' : '—'}</dd>
+                {st.power && <><dt>TV</dt><dd>{st.power === 'on' ? 'Αναμμένη' : 'Σε αναμονή'}{st.volume != null ? ` · ένταση ${st.volume}` : ''}</dd></>}
+            </dl>
+            {st.configured && !st.oauth && (
+                <button className="btn primary wide" disabled={busy} onClick={connect}>{busy ? 'Άνοιγμα Samsung…' : '🔗 Μόνιμη σύνδεση με λογαριασμό Samsung'}</button>
+            )}
+            {!st.configured && <p className="muted small">Χρειάζεται το κλειδί SmartThings στο Vercel (SMARTTHINGS_TOKEN).</p>}
+            <button className="btn small mt-s" onClick={reloadSt}>↻ Ανανέωση</button>
+        </div>
     );
 }

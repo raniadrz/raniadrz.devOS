@@ -3,6 +3,7 @@
 // Web ⇄  /api/*      (κωδικός σύνδεσης, προεπιλογή 1912, αλλάζει από τις Ρυθμίσεις)
 import crypto from 'node:crypto';
 import { pipeline, transaction, cmd, storeKind } from './store.js';
+import * as ST from './smartthings.js';
 
 const env = (k, d = '') => process.env[k] || d;
 const GEMINI_MODEL = () => env('GEMINI_MODEL', 'gemini-3.5-flash-lite');
@@ -106,9 +107,12 @@ async function getTv() {
     };
 }
 
-async function sendToTv(c, timeoutMs = 9000) {
+async function tvAppOnline() {
     const seen = await cmd('GET', K.seen);
-    if (!seen || Date.now() - Number(seen) > TV_ONLINE_MS) return { ok: false, info: 'Η TV δεν είναι συνδεδεμένη' };
+    return !!seen && Date.now() - Number(seen) < TV_ONLINE_MS;
+}
+
+async function enqueueAndWait(c, timeoutMs) {
     const id = crypto.randomBytes(6).toString('hex');
     await pipeline([
         ['RPUSH', K.queue, JSON.stringify({ ...c, type: 'command', id })],
@@ -122,6 +126,39 @@ async function sendToTv(c, timeoutMs = 9000) {
         if (a) return JSON.parse(a);
     }
     return { ok: true, info: 'στάλθηκε · η TV θα το εκτελέσει σε λίγο' };
+}
+
+/* Εντολή μόνο προς την εφαρμογή raniadrz.dev OS */
+async function sendToApp(c, timeoutMs = 9000) {
+    if (!(await tvAppOnline())) return { ok: false, info: 'Το raniadrz.dev OS δεν τρέχει στην TV' };
+    return enqueueAndWait(c, timeoutMs);
+}
+
+/* Καθολική εντολή:
+   - Πλήκτρα & εφαρμογές τρίτων → SmartThings (δουλεύουν μέσα σε Netflix, YouTube κ.λπ.)
+   - Λειτουργίες του raniadrz.dev OS → η εφαρμογή· αν δεν τρέχει, την ανοίγει το SmartThings πρώτα */
+async function sendToTv(c, timeoutMs = 9000) {
+    const stOn = await ST.isConfigured().catch(() => false);
+    if (stOn) {
+        try {
+            if (c.action === 'key') return await ST.sendKeys(c.keys || [c.key]);
+            if (c.action === 'openApp' && ST.APP_IDS[c.app]) return await ST.launchApp(c.app);
+            if (c.action === 'openLauncher') return await ST.launchApp(ST.LAUNCHER);
+        } catch (e) {
+            if (!(await tvAppOnline())) return { ok: false, info: e.message };
+        }
+    }
+    if (await tvAppOnline()) return enqueueAndWait(c, timeoutMs);
+    if (stOn) {
+        try { await ST.launchApp(ST.LAUNCHER); } catch (e) { return { ok: false, info: e.message }; }
+        if (c.action === 'home' || c.action === 'openLauncher') return { ok: true, info: 'άνοιξε το raniadrz.dev OS' };
+        return enqueueAndWait(c, 20000);
+    }
+    return { ok: false, info: 'Η TV δεν είναι συνδεδεμένη' };
+}
+
+async function stSafe(fn) {
+    try { return await fn(); } catch (e) { return { ok: false, info: e.message }; }
 }
 
 async function tvSync(b) {
@@ -266,7 +303,14 @@ function tools(state) {
                 parameters: { type: 'OBJECT', properties: { minutes: { type: 'INTEGER' } }, required: ['minutes'] } },
             { name: 'add_poll_option', description: 'Προσθέτει επιλογή στην ψηφοφορία «Τι βλέπουμε απόψε;».',
                 parameters: { type: 'OBJECT', properties: { title: { type: 'STRING' }, platform: { type: 'STRING' } }, required: ['title'] } },
-            { name: 'show_poll', description: 'Δείχνει την ψηφοφορία «Τι βλέπουμε απόψε;» στην TV.' }
+            { name: 'show_poll', description: 'Δείχνει την ψηφοφορία «Τι βλέπουμε απόψε;» στην TV.' },
+            { name: 'tv_power', description: 'Ανάβει ή σβήνει την τηλεόραση (SmartThings).',
+                parameters: { type: 'OBJECT', properties: { on: { type: 'BOOLEAN' } }, required: ['on'] } },
+            { name: 'tv_volume', description: 'Ένταση της TV (SmartThings): up, down, mute, unmute ή set με level 0-100.',
+                parameters: { type: 'OBJECT', properties: { action: { type: 'STRING', enum: ['up', 'down', 'mute', 'unmute', 'set'] }, level: { type: 'INTEGER' } }, required: ['action'] } },
+            { name: 'tv_media', description: 'Έλεγχος αναπαραγωγής σε οποιαδήποτε εφαρμογή (SmartThings).',
+                parameters: { type: 'OBJECT', properties: { action: { type: 'STRING', enum: ['play', 'pause', 'stop', 'forward', 'rewind'] } }, required: ['action'] } },
+            { name: 'open_raniadrz_os', description: 'Ανοίγει την εφαρμογή raniadrz.dev OS στην TV (π.χ. όταν ο χρήστης είναι στο Netflix).' }
         ]
     }];
 }
@@ -290,12 +334,16 @@ async function execTool(name, args = {}) {
         case 'add_poll_option':
             try { await pollAdd(args.title, args.platform, ''); return { ok: true, info: 'προστέθηκε' }; } catch (e) { return { ok: false, info: e.message }; }
         case 'show_poll': return sendToTv({ action: 'showPoll', poll: await getPoll() });
+        case 'tv_power': return stSafe(() => ST.power(!!args.on));
+        case 'tv_volume': return stSafe(() => ST.volume(args.action, args.level));
+        case 'tv_media': return stSafe(() => ST.media(args.action));
+        case 'open_raniadrz_os': return sendToTv({ action: 'openLauncher' });
         default: return { ok: false, info: 'άγνωστο εργαλείο' };
     }
 }
 
 async function aiChat(messages) {
-    const [tv, poll] = await Promise.all([getTv(), getPoll()]);
+    const [tv, poll, stOn] = await Promise.all([getTv(), getPoll(), ST.isConfigured().catch(() => false)]);
     const contents = messages.slice(-14).map(m => ({
         role: m.role === 'user' ? 'user' : 'model',
         parts: [{ text: String(m.text || '').slice(0, 2000) }]
@@ -305,7 +353,8 @@ async function aiChat(messages) {
         'Μιλάς πάντα ελληνικά, φιλικά και σύντομα, χωρίς markdown. Ελέγχεις την TV μέσω των εργαλείων σου: ' +
         'όταν ο χρήστης ζητά κάτι για την TV, κάλεσε το σωστό εργαλείο (μπορείς πολλά στη σειρά) και μετά επιβεβαίωσε τι έγινε. ' +
         'Για προτάσεις σειρών βασίσου στα αγαπημένα και στο πού έμεινε (progress). Αν πει «είμαι στη σεζόν Χ επεισόδιο Υ», αποθήκευσέ το με set_progress. ' +
-        'Αν η TV δεν είναι συνδεδεμένη, εξήγησε ότι πρέπει να ανοίξει το raniadrz.dev OS στην TV. ' +
+        (stOn ? 'Το SmartThings είναι συνδεδεμένο: πλήκτρα, εφαρμογές, ένταση, αναπαραγωγή και άναμμα/σβήσιμο δουλεύουν ακόμα κι αν ο χρήστης είναι μέσα στο Netflix ή το YouTube· οι λειτουργίες του raniadrz.dev OS ανοίγουν την εφαρμογή αυτόματα. '
+            : 'Αν η TV δεν είναι συνδεδεμένη, εξήγησε ότι πρέπει να ανοίξει το raniadrz.dev OS στην TV ή να συνδέσει το SmartThings. ') +
         'Τρέχουσα κατάσταση TV: ' + JSON.stringify(tvSummary(tv, poll));
 
     const actions = [];
@@ -378,6 +427,11 @@ async function tvGemini(b) {
     }
 }
 
+function stRedirectUri(req) {
+    const base = env('CLOUD_URL') || `${req.headers['x-forwarded-proto'] || 'http'}://${req.headers['x-forwarded-host'] || req.headers.host}`;
+    return base.replace(/\/+$/, '') + '/api/st/oauth/callback';
+}
+
 /* ---------------- Router ---------------- */
 export async function handle(req, res) {
     const url = new URL(req.url, 'http://localhost');
@@ -395,6 +449,19 @@ export async function handle(req, res) {
                 return json(res, code, data);
             }
             return json(res, 404, { error: 'Not found' });
+        }
+
+        /* ----- SmartThings OAuth επιστροφή (χωρίς κωδικό web, προστατεύεται με state) ----- */
+        if (p === '/api/st/oauth/callback' && req.method === 'GET') {
+            try {
+                await ST.oauthCallback(url.searchParams.get('code'), url.searchParams.get('state'), stRedirectUri(req));
+                res.statusCode = 302;
+                res.setHeader('Location', '/?st=ok');
+            } catch (e) {
+                res.statusCode = 302;
+                res.setHeader('Location', '/?st=error&msg=' + encodeURIComponent(e.message));
+            }
+            return res.end();
         }
 
         /* ----- Σύνδεση web ----- */
@@ -433,6 +500,24 @@ export async function handle(req, res) {
             });
         }
         if (p === '/api/command' && req.method === 'POST') return json(res, 200, await sendToTv(await readBody(req)));
+
+        if (p === '/api/st/status' && req.method === 'GET') return json(res, 200, await ST.status());
+        if (p === '/api/st/command' && req.method === 'POST') {
+            const b = await readBody(req);
+            const run = {
+                power: () => ST.power(b.value === true || b.value === 'on'),
+                volume: () => ST.volume(b.value, b.level),
+                media: () => ST.media(b.value),
+                key: () => ST.sendKeys(Array.isArray(b.value) ? b.value : [b.value]),
+                app: () => ST.launchApp(b.value)
+            }[b.type];
+            if (!run) return json(res, 400, { ok: false, info: 'άγνωστη εντολή' });
+            return json(res, 200, await stSafe(run));
+        }
+        if (p === '/api/st/oauth/start' && req.method === 'POST') {
+            try { return json(res, 200, { url: await ST.oauthStartUrl(stRedirectUri(req)) }); }
+            catch (e) { return json(res, 400, { error: e.message }); }
+        }
         if (p === '/api/ai/chat' && req.method === 'POST') {
             const b = await readBody(req);
             return json(res, 200, await aiChat(Array.isArray(b.messages) ? b.messages : []));
