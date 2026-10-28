@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<widget xmlns="http://www.w3.org/ns/widgets"
+        xmlns:tizen="http://tizen.org/ns/widgets"
+        id="http://raniadrz.dev/OS"
+        version="1.0.0"
+        viewmodes="maximized">
+
+    <tizen:application id="RaniaDrzOS.Launcher" package="RaniaDrzOS" required_version="3.0"/>
+
+    <name>raniadrz.dev OS</name>
+    <description>raniadrz.dev OS: futuristic glassmorphism launcher για Samsung Smart TV με προφίλ, PIN, θέματα και AI βοηθό (Gemini).</description>
+    <author>raniadrz.dev</author>
+
+    <content src="index.html"/>
+    <icon src="icon.png"/>
+
+    <tizen:profile name="tv-samsung"/>
+    <feature name="http://tizen.org/feature/screen.size.all"/>
+
+    <!-- Πρόσβαση στο δίκτυο (Gemini API, Media Player) -->
+    <access origin="*" subdomains="true"/>
+
+    <!-- Εκκίνηση άλλων εφαρμογών (YouTube, Netflix, Browser κτλ.) -->
+    <tizen:privilege name="http://tizen.org/privilege/application.launch"/>
+    <tizen:privilege name="http://tizen.org/privilege/appmanager.launch"/>
+    <!-- Καταχώρηση πλήκτρων τηλεχειριστηρίου (αριθμοί, media keys) -->
+    <tizen:privilege name="http://tizen.org/privilege/tv.inputdevice"/>
+    <tizen:privilege name="http://tizen.org/privilege/internet"/>
+
+    <tizen:setting screen-orientation="landscape"
+                   context-menu="disable"
+                   background-support="disable"
+                   encryption="disable"
+                   install-location="auto"
+                   hwkey-event="enable"/>
+</widget>

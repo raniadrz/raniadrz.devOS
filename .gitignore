@@ -1,0 +1,23 @@
+# Εξαρτήσεις & builds
+node_modules/
+companion/dist/
+*.wgt
+
+# Μυστικά & τοπικά δεδομένα (ΠΟΤΕ στο git)
+.env
+.env.*
+!.env.example
+companion/.env
+companion/.auth.json
+companion/.poll.json
+companion/certs/
+tv-config.js
+author-signature.xml
+signature1.xml
+
+# Εργαλεία
+.vercel/
+.claude/
+.vscode/
+.DS_Store
+!companion/.env.example

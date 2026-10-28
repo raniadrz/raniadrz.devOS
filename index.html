@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1920, height=1080, initial-scale=1.0, user-scalable=no">
+    <title>raniadrz.dev OS</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="theme-neon-dark">
+
+    <!-- Φόντο με απαλές λάμψεις -->
+    <div id="bg" aria-hidden="true">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+        <div class="grid-floor"><div class="grid-plane"></div></div>
+        <div class="scanline"></div>
+        <div class="scan-overlay"></div>
+    </div>
+
+    <!-- ================= DASHBOARD ================= -->
+    <div id="dashboard" class="screen">
+
+        <header class="header glass hud" data-nav-row="header">
+            <div class="logo">
+                <span class="logo-mark">
+                    <svg viewBox="0 0 64 64" width="64" height="64">
+                        <defs>
+                            <linearGradient id="logoGrad" x1="0" y1="0" x2="1" y2="1">
+                                <stop offset="0" stop-color="#ff5ec4"/>
+                                <stop offset="1" stop-color="#ff1478"/>
+                            </linearGradient>
+                        </defs>
+                        <rect x="4" y="4" width="56" height="56" rx="18" fill="url(#logoGrad)"/>
+                        <path d="M26 20 L46 32 L26 44 Z" fill="#ffffff"/>
+                    </svg>
+                </span>
+                <span class="logo-text">raniadrz<b>.dev</b></span>
+                <span class="logo-ver mono">OS 2.0</span>
+            </div>
+
+            <div class="clock">
+                <div id="clock-time" class="clock-time mono">--:--</div>
+                <div id="clock-date" class="clock-date muted"></div>
+            </div>
+
+            <div class="header-right">
+                <div class="sys-status">
+                    <div class="sys-chip tech"><span class="sys-dot"></span><span id="weather-chip-text">ΚΑΙΡΟΣ…</span></div>
+                    <div class="sys-chip tech"><span class="sys-dot dot-b"></span>AI CORE ACTIVE</div>
+                    <div class="sys-chip tech"><span id="companion-dot" class="sys-dot off"></span><span id="companion-chip-text">COMPANION OFFLINE</span></div>
+                </div>
+                <div id="settings-btn" class="icon-btn focusable" data-action="open-settings" data-fk="settings"><svg viewBox="0 0 24 24" width="40" height="40"><g fill="currentColor"><rect x="10.6" y="1.4" width="2.8" height="5" rx="1" transform="rotate(0 12 12)"/><rect x="10.6" y="1.4" width="2.8" height="5" rx="1" transform="rotate(45 12 12)"/><rect x="10.6" y="1.4" width="2.8" height="5" rx="1" transform="rotate(90 12 12)"/><rect x="10.6" y="1.4" width="2.8" height="5" rx="1" transform="rotate(135 12 12)"/><rect x="10.6" y="1.4" width="2.8" height="5" rx="1" transform="rotate(180 12 12)"/><rect x="10.6" y="1.4" width="2.8" height="5" rx="1" transform="rotate(225 12 12)"/><rect x="10.6" y="1.4" width="2.8" height="5" rx="1" transform="rotate(270 12 12)"/><rect x="10.6" y="1.4" width="2.8" height="5" rx="1" transform="rotate(315 12 12)"/></g><circle cx="12" cy="12" r="6" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="12" cy="12" r="2" fill="currentColor"/></svg></div>
+                <div id="user-badge" class="user-badge focusable" data-action="open-profiles" data-fk="badge">
+                    <div id="badge-avatar" class="avatar avatar-sm"></div>
+                    <div class="badge-info">
+                        <div id="badge-name" class="badge-name"></div>
+                        <div class="badge-hint muted">Αλλαγή προφίλ</div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="main" data-nav-row="main">
+            <!-- AI Assistant -->
+            <aside class="ai-panel glass hud">
+                <div class="ai-top">
+                    <div class="ai-core">
+                        <span class="ring ring-1"></span>
+                        <span class="ring ring-2"></span>
+                        <span class="ring ring-3"></span>
+                        <span class="core">AI</span>
+                    </div>
+                    <div class="ai-head">
+                        <div class="ai-label tech hud-label">AURA · AI ASSISTANT</div>
+                        <div class="ai-status tech muted"><span class="sys-dot dot-b"></span><span id="ai-status-text">GEMINI · ΣΥΝΔΕΣΗ…</span></div>
+                        <h1 id="greeting-title" class="greeting-title"></h1>
+                    </div>
+                </div>
+                <div class="ai-message focusable" data-action="open-chat" data-fk="ai-chat"><span id="ai-text"></span><span class="caret"></span><span class="ai-hint tech">OK · CHAT</span></div>
+                <div class="sug-head tech">
+                    <span class="hud-label">ΠΡΟΤΑΣΕΙΣ ΓΙΑ ΣΕΝΑ</span>
+                    <span id="ai-period" class="muted"></span>
+                </div>
+                <div id="ai-suggestions"></div>
+            </aside>
+
+            <!-- Apps -->
+            <section class="apps-area">
+                <div class="section-head tech">
+                    <span class="hud-label">ΕΦΑΡΜΟΓΕΣ</span>
+                    <span class="line"></span>
+                    <span id="apps-count" class="section-count mono"></span>
+                </div>
+                <div id="apps-grid" class="apps-grid"></div>
+            </section>
+        </div>
+
+        <footer class="settings-bar glass hud" data-nav-row="footer">
+            <div class="settings-label">
+                <span class="settings-title tech hud-label">ΣΚΗΝΕΣ</span>
+                <span class="settings-sub muted">Ένα OK, όλα έτοιμα</span>
+            </div>
+            <div id="scene-bar" class="theme-bar"></div>
+            <div class="key-hints muted">
+                <span class="kh"><b>◀ ▲ ▼ ▶</b> Πλοήγηση</span>
+                <span class="kh"><b>OK</b> Επιλογή</span>
+                <span class="kh"><b>BACK</b> Επιστροφή</span>
+            </div>
+        </footer>
+    </div>
+
+    <!-- ================= PROFILE SELECTOR ================= -->
+    <div id="profile-modal" class="modal hidden">
+        <div id="profile-panel" class="modal-panel glass hud panel-profiles">
+            <h2 id="profile-modal-title" class="modal-title">Ποιος βλέπει;</h2>
+            <p id="profile-modal-sub" class="modal-sub muted">Επίλεξε το προφίλ σου</p>
+            <div id="profiles-list" class="profiles-list"></div>
+            <div class="modal-actions">
+                <div id="btn-manage" class="btn focusable" data-action="toggle-manage" data-fk="btn-manage">Διαχείριση προφίλ</div>
+                <div id="btn-close-profiles" class="btn focusable" data-action="close-modal" data-fk="btn-close">Κλείσιμο</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= PIN PAD ================= -->
+    <div id="pin-modal" class="modal hidden">
+        <div class="modal-panel glass hud panel-pin">
+            <div id="pin-avatar" class="avatar avatar-md"></div>
+            <h2 id="pin-title" class="modal-title"></h2>
+            <p id="pin-sub" class="modal-sub muted"></p>
+            <div id="pin-dots" class="pin-dots">
+                <span class="pin-dot"></span>
+                <span class="pin-dot"></span>
+                <span class="pin-dot"></span>
+                <span class="pin-dot"></span>
+            </div>
+            <div id="pin-error" class="pin-error"></div>
+            <div class="pin-pad">
+                <div class="pin-key focusable" data-action="pin-key" data-key="1" data-fk="pk-1">1</div>
+                <div class="pin-key focusable" data-action="pin-key" data-key="2" data-fk="pk-2">2</div>
+                <div class="pin-key focusable" data-action="pin-key" data-key="3" data-fk="pk-3">3</div>
+                <div class="pin-key focusable" data-action="pin-key" data-key="4" data-fk="pk-4">4</div>
+                <div class="pin-key focusable" data-action="pin-key" data-key="5" data-fk="pk-5">5</div>
+                <div class="pin-key focusable" data-action="pin-key" data-key="6" data-fk="pk-6">6</div>
+                <div class="pin-key focusable" data-action="pin-key" data-key="7" data-fk="pk-7">7</div>
+                <div class="pin-key focusable" data-action="pin-key" data-key="8" data-fk="pk-8">8</div>
+                <div class="pin-key focusable" data-action="pin-key" data-key="9" data-fk="pk-9">9</div>
+                <div class="pin-key pin-key-fn focusable" data-action="pin-key" data-key="cancel" data-fk="pk-cancel">Άκυρο</div>
+                <div class="pin-key focusable" data-action="pin-key" data-key="0" data-fk="pk-0">0</div>
+                <div class="pin-key pin-key-fn focusable" data-action="pin-key" data-key="del" data-fk="pk-del">
+                    <svg viewBox="0 0 24 24" width="38" height="38"><path fill="currentColor" d="M22 5H8.4c-.5 0-1 .2-1.3.6L1.5 12l5.6 6.4c.3.4.8.6 1.3.6H22c.6 0 1-.4 1-1V6c0-.6-.4-1-1-1zm-3.3 10.3-1.4 1.4-2.8-2.8-2.8 2.8-1.4-1.4 2.8-2.8-2.8-2.8 1.4-1.4 2.8 2.8 2.8-2.8 1.4 1.4-2.8 2.8 2.8 2.8z"/></svg>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= PIN ACTIONS ================= -->
+    <div id="pin-actions-modal" class="modal hidden">
+        <div class="modal-panel glass hud panel-actions">
+            <div id="actions-avatar" class="avatar avatar-md"></div>
+            <h2 id="actions-title" class="modal-title"></h2>
+            <p id="actions-sub" class="modal-sub muted">Τι θέλεις να κάνεις με αυτό το προφίλ;</p>
+            <div id="actions-list" class="actions-list"></div>
+        </div>
+    </div>
+
+    <!-- ================= NEW PROFILE ================= -->
+    <div id="new-profile-modal" class="modal hidden">
+        <div class="modal-panel glass hud panel-new-profile">
+            <div id="np-avatar" class="avatar avatar-lg av-1"><span>?</span></div>
+            <h2 class="modal-title">Νέο προφίλ</h2>
+            <p class="modal-sub muted">Γράψε όνομα και διάλεξε χρώμα. PIN μπορείς να βάλεις μετά από τη «Διαχείριση προφίλ».</p>
+            <div class="np-input-wrap focusable" data-action="np-input" data-fk="np-input">
+                <input id="np-name" type="text" maxlength="16" autocomplete="off" placeholder="Όνομα (OK για πληκτρολόγιο)">
+            </div>
+            <div class="np-colors">
+                <div class="np-color avatar av-1 focusable" data-action="np-color" data-color="1" data-fk="np-c1"></div>
+                <div class="np-color avatar av-2 focusable" data-action="np-color" data-color="2" data-fk="np-c2"></div>
+                <div class="np-color avatar av-3 focusable" data-action="np-color" data-color="3" data-fk="np-c3"></div>
+                <div class="np-color avatar av-4 focusable" data-action="np-color" data-color="4" data-fk="np-c4"></div>
+            </div>
+            <div id="np-error" class="pin-error"></div>
+            <div class="modal-actions">
+                <div class="btn focusable" data-action="np-create" data-fk="np-create">Δημιουργία</div>
+                <div class="btn focusable" data-action="close-modal" data-fk="np-cancel">Άκυρο</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= MEDIA PLAYER ================= -->
+    <div id="player-modal" class="modal hidden">
+        <div class="modal-panel glass hud panel-player">
+            <div class="player-main">
+                <div class="video-wrap">
+                    <video id="player-video" preload="auto"></video>
+                    <div id="player-state" class="player-state"></div>
+                </div>
+                <div class="player-info">
+                    <div id="player-title" class="player-title"></div>
+                    <div class="player-time muted"><span id="player-cur">0:00</span> / <span id="player-dur">0:00</span></div>
+                </div>
+                <div class="progress"><div id="player-progress" class="progress-fill"></div></div>
+                <div class="player-controls">
+                    <div class="ctrl focusable" data-action="player-ctrl" data-op="rw" data-fk="ctrl-rw">
+                        <svg viewBox="0 0 24 24" width="40" height="40"><path fill="currentColor" d="M11 18V6l-8.5 6 8.5 6zm.5-6 8.5 6V6l-8.5 6z"/></svg>
+                        <span>-10″</span>
+                    </div>
+                    <div class="ctrl ctrl-main focusable" data-action="player-ctrl" data-op="toggle" data-fk="ctrl-toggle">
+                        <span id="ctrl-toggle-icon"></span>
+                    </div>
+                    <div class="ctrl focusable" data-action="player-ctrl" data-op="ff" data-fk="ctrl-ff">
+                        <svg viewBox="0 0 24 24" width="40" height="40"><path fill="currentColor" d="M4 18l8.5-6L4 6v12zm9-12v12l8.5-6L13 6z"/></svg>
+                        <span>+10″</span>
+                    </div>
+                    <div class="ctrl focusable" data-action="player-ctrl" data-op="close" data-fk="ctrl-close">
+                        <svg viewBox="0 0 24 24" width="40" height="40"><path fill="currentColor" d="M19 6.4 17.6 5 12 10.6 6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12z"/></svg>
+                        <span>Κλείσιμο</span>
+                    </div>
+                </div>
+            </div>
+            <div class="player-side">
+                <div class="side-title">Λίστα αναπαραγωγής</div>
+                <div id="playlist" class="playlist"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= AURA CHAT (Gemini) ================= -->
+    <div id="chat-modal" class="modal hidden">
+        <div class="modal-panel glass hud panel-chat">
+            <div class="chat-head">
+                <span class="core chat-orb">AI</span>
+                <div>
+                    <div class="modal-title chat-title">AURA</div>
+                    <div class="tech hud-label chat-powered">AI ASSISTANT · POWERED BY GEMINI</div>
+                </div>
+                <div id="chat-state" class="chat-state tech muted">ΕΤΟΙΜΗ</div>
+            </div>
+            <div id="chat-log" class="chat-log"></div>
+            <div id="chat-quick" class="chat-quick"></div>
+            <div class="chat-input-row">
+                <div class="chat-input-wrap focusable" data-action="chat-input" data-fk="chat-input">
+                    <input id="chat-input" type="text" maxlength="300" autocomplete="off" placeholder="Γράψε την ερώτησή σου… (OK για πληκτρολόγιο)">
+                </div>
+                <div class="btn focusable" data-action="chat-send" data-fk="chat-send">Αποστολή</div>
+                <div class="btn focusable" data-action="chat-clear" data-fk="chat-clear">Καθαρισμός</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= ΣΕΙΡΕΣ AI ================= -->
+    <div id="series-modal" class="modal hidden">
+        <div class="modal-panel glass hud panel-series">
+            <div class="chat-head">
+                <span class="core chat-orb">AI</span>
+                <div>
+                    <div class="modal-title chat-title">ΣΕΙΡΕΣ ΓΙΑ ΣΕΝΑ</div>
+                    <div class="tech hud-label chat-powered">AI ΠΡΟΤΑΣΕΙΣ ΜΕ ΒΑΣΗ ΤΑ ΑΓΑΠΗΜΕΝΑ ΣΟΥ · GEMINI</div>
+                </div>
+                <div id="series-state" class="chat-state tech muted"></div>
+            </div>
+            <div class="series-body">
+                <div class="series-favs">
+                    <div class="sug-head tech"><span class="hud-label">ΤΑ ΑΓΑΠΗΜΕΝΑ ΜΟΥ</span><span id="fav-count" class="muted"></span></div>
+                    <div class="np-input-wrap series-add focusable" data-action="fav-input" data-fk="fav-input">
+                        <input id="fav-input" type="text" maxlength="40" autocomplete="off" placeholder="+ Πρόσθεσε σειρά (OK για πληκτρολόγιο)">
+                    </div>
+                    <div id="fav-list" class="fav-list"></div>
+                </div>
+                <div class="series-recs">
+                    <div class="sug-head tech"><span class="hud-label">ΠΡΟΤΑΣΕΙΣ AI</span><span class="muted">OK · ΑΝΟΙΓΜΑ &nbsp; + · ΣΤΑ ΑΓΑΠΗΜΕΝΑ</span></div>
+                    <div id="rec-list" class="rec-list"></div>
+                    <div class="btn focusable" data-action="recs-refresh" data-fk="recs-refresh">Νέες προτάσεις</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= ΡΥΘΜΙΣΕΙΣ ================= -->
+    <div id="settings-modal" class="modal hidden">
+        <div class="modal-panel glass hud panel-settings">
+            <h2 class="modal-title">Ρυθμίσεις</h2>
+            <div class="set-section">
+                <div class="set-label tech hud-label">ΘΕΜΑ</div>
+                <div id="set-themes" class="set-row"></div>
+            </div>
+            <div class="set-section">
+                <div class="set-label tech hud-label">ΕΜΦΑΝΙΣΗ & AI</div>
+                <div class="set-row">
+                    <div class="btn set-toggle focusable" data-action="toggle-setting" data-key="effects" data-fk="set-effects"></div>
+                    <div class="btn set-toggle focusable" data-action="toggle-setting" data-key="seconds" data-fk="set-seconds"></div>
+                    <div class="btn set-toggle focusable" data-action="toggle-setting" data-key="aiGreeting" data-fk="set-ai"></div>
+                </div>
+            </div>
+            <div class="set-section">
+                <div class="set-label tech hud-label">ΥΠΝΟΣ & ΚΑΙΡΟΣ</div>
+                <div class="set-row">
+                    <div id="sleep-btn" class="btn set-toggle focusable" data-action="sleep-cycle" data-fk="set-sleep"></div>
+                    <div class="np-input-wrap set-bridge focusable" data-action="city-input" data-fk="set-city">
+                        <input id="city-input" type="text" maxlength="40" autocomplete="off" placeholder="Πόλη για τον καιρό (π.χ. Αθήνα)">
+                    </div>
+                    <div class="btn focusable" data-action="save-city" data-fk="set-save-city">Αποθήκευση</div>
+                </div>
+            </div>
+            <div class="set-section">
+                <div class="set-label tech hud-label">WEB COMPANION (ΔΙΕΥΘΥΝΣΗ CLOUD)</div>
+                <div class="set-row">
+                    <div class="np-input-wrap set-bridge focusable" data-action="bridge-input" data-fk="set-bridge">
+                        <input id="bridge-input" type="text" maxlength="60" autocomplete="off" placeholder="π.χ. raniadrz-os.vercel.app">
+                    </div>
+                    <div class="btn focusable" data-action="bridge-connect" data-fk="set-connect">Σύνδεση</div>
+                    <div id="bridge-status" class="bridge-status tech"></div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <div class="btn focusable" data-action="close-modal" data-fk="set-close">Κλείσιμο</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= ΣΕΙΡΑ: ΠΡΟΟΔΟΣ ================= -->
+    <div id="fav-actions-modal" class="modal hidden">
+        <div class="modal-panel glass hud panel-fav">
+            <h2 id="fa-title" class="modal-title"></h2>
+            <p id="fa-sub" class="modal-sub muted">Πού έμεινες; Η AURA θα σου το θυμίζει στην αρχική.</p>
+            <div class="fa-progress">
+                <div class="fa-box"><div class="tech hud-label fa-label">ΣΕΖΟΝ</div><div id="fa-season" class="fa-num"></div></div>
+                <div class="fa-box"><div class="tech hud-label fa-label">ΕΠΕΙΣΟΔΙΟ</div><div id="fa-episode" class="fa-num"></div></div>
+            </div>
+            <div class="fa-actions">
+                <div class="btn focusable" data-action="fa-op" data-op="next-ep" data-fk="fa-next-ep">Επόμενο επεισόδιο +1</div>
+                <div class="btn focusable" data-action="fa-op" data-op="prev-ep" data-fk="fa-prev-ep">Προηγούμενο −1</div>
+                <div class="btn focusable" data-action="fa-op" data-op="next-season" data-fk="fa-next-season">Επόμενη σεζόν</div>
+                <div class="btn focusable" data-action="fa-op" data-op="trailer" data-fk="fa-trailer">▶ Trailer (YouTube)</div>
+                <div class="btn btn-danger focusable" data-action="fa-op" data-op="remove" data-fk="fa-remove">Αφαίρεση</div>
+                <div class="btn focusable" data-action="close-modal" data-fk="fa-close">Κλείσιμο</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= ΤΙ ΒΛΕΠΟΥΜΕ ΑΠΟΨΕ ================= -->
+    <div id="poll-modal" class="modal hidden">
+        <div class="modal-panel glass hud panel-poll">
+            <h2 class="modal-title">Τι βλέπουμε απόψε;</h2>
+            <p class="modal-sub muted">Ψηφίστε από το κινητό σας στο web companion · καρτέλα «Απόψε»</p>
+            <div id="poll-list" class="poll-list"></div>
+            <div class="modal-actions">
+                <div class="btn focusable" data-action="poll-open-winner" data-fk="poll-win">▶ Άνοιγμα νικητή</div>
+                <div class="btn focusable" data-action="close-modal" data-fk="poll-close">Κλείσιμο</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= ΥΠΝΟΣ ================= -->
+    <div id="sleep-overlay" class="sleep-overlay hidden">
+        <div class="sleep-box">
+            <div class="sleep-title">Καληνύχτα</div>
+            <div class="sleep-sub">Πάτα οποιοδήποτε πλήκτρο για επιστροφή</div>
+        </div>
+    </div>
+
+    <!-- ================= TOAST ================= -->
+    <div id="toast" class="toast glass hidden"></div>
+
+    <!-- Ρύθμιση cloud (διεύθυνση Vercel + κλειδί συσκευής), δημιουργείται από το npm run tv -->
+    <script src="tv-config.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
